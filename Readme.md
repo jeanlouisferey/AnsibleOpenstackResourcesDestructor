@@ -1,6 +1,6 @@
 Ansible playbook for cloud tenant destruction (complete resource deletion)
 
-## BE CAREFULL - This playbook is dangerous !##
+## BE CAREFULL - This playbook is dangerous !
 
 ===============================================
 
