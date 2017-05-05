@@ -1,0 +1,23 @@
+#Name of the cloud environment (can be whatever you want but must be easy to identify) (format: string without space)
+CloudName: myopenstack
+
+#Authentication URL on the Cloud Provider
+CloudAuthUrl: https://myopenstack-identity.io/v3
+
+#Authentification login on the Cloud
+CloudUserName: acde6678
+
+#Authentication password on the Cloud
+CloudPassword: MySup#rP@ssw0rd
+
+#Cloud Project Name (tenant name)
+CloudProjectName: DansTonCloud
+
+#Project Domain ID (also used as User Domain ID)
+CloudDomainID: default
+
+#CloudCertificateVerification set to true active the SSL certificate checks on all transactions with the Cloud. CloudCertificateVerification set to false disable SSL certificate checks. Set CloudCertificateVerification to false is the Cloud Provider has auto-generated certificates or has certificates generated with unknown certificate authority
+CloudCertificateVerification: false
+
+#CloudExternalNetworkName MUST contains the name of the external network on which floating IP will be requested. This network name is also used when we need to create a specific router
+CloudExternalNetworkName: "external"

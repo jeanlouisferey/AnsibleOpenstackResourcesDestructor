@@ -1,0 +1,12 @@
+clouds:
+  multicloud:
+    auth:
+      auth_url: {{CloudAuthUrl}}
+      username: {{CloudUserName}}
+      password: {{CloudPassword}}
+      project_name: {{CloudProjectName}}
+{% if CloudDomainID is defined and CloudDomainID != "" %}
+      domain_id: "default"
+{% endif %}
+    region_name: {{ CloudRegionName }}
+    verify: {{ CloudCertificateVerification }}

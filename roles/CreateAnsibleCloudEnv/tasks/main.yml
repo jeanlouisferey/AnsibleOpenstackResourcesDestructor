@@ -1,0 +1,49 @@
+---
+  - name: Check if CloudName is defined and not empty
+    fail: msg="CloudName need to be defined and must not be empty"
+    when: CloudName is not defined or (CloudName is defined and CloudName == "")
+    tags: always
+
+  - name: Check if CloudAuthUrl is defined and not empty
+    fail: msg="CloudAuthUrl need to be defined and must not be empty"
+    when: CloudAuthUrl is not defined or (CloudAuthUrl is defined and CloudAuthUrl == "")
+    tags: always
+
+  - name: Check if CloudUserName is defined and not empty
+    fail: msg="CloudUserName need to be defined and must not be empty"
+    when: CloudUserName is not defined or (CloudUserName is defined and CloudUserName == "")
+    tags: always
+
+  - name: Check if CloudPassword is defined and not empty
+    fail: msg="CloudPassword need to be defined and must not be empty"
+    when: CloudPassword is not defined or (CloudPassword is defined and CloudPassword == "")
+    tags: always
+
+  - name: Check if CloudProjectName is defined and not empty
+    fail: msg="CloudProjectName need to be defined and must not be empty"
+    when: CloudProjectName is not defined or (CloudProjectName is defined and CloudProjectName == "")
+    tags: always
+
+  - name: Check if CloudExternalNetworkName is defined and is not empty
+    fail: msg="CloudExternalNetworkName need to be defined and must not be empty"
+    when: CloudExternalNetworkName is not defined or (CloudExternalNetworkName is defined and CloudExternalNetworkName == "")
+    tags: always
+
+  - name: Check if CloudCertificateVerification is defined and not different from true or false
+    fail: msg="CloudCertificateVerification need to be defined and must be equal to true or false"
+    when: CloudCertificateVerification is not defined or (CloudCertificateVerification is defined and CloudCertificateVerification != true and CloudCertificateVerification != false)
+    tags: always
+
+  - name: Create clouds.yml configuration file locally
+    template: src=cloud.yml.j2 dest=./clouds.yml
+    tags: always
+
+  - name: Define CloudNeutronDomainId with empty value
+    set_fact: CloudNeutronDomainId=''
+    when: CloudDomainID is not defined
+    tags: always
+
+  - name: Define CloudNeutronDomainId with cloud value
+    set_fact: CloudNeutronDomainId={{CloudDomainID}}
+    when: CloudDomainID is defined
+    tags: always

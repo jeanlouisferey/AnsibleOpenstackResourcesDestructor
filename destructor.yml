@@ -1,0 +1,201 @@
+# Generic Destructor
+# launch with:
+# ansible-playbook destructor.yml -e "@cloudresourcefile.yml"
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+  # Create clouds.yml used by shade to communicate with Openstack
+  - role: CreateAnsibleCloudEnv
+
+  post_tasks:
+  - name: Get instances
+    os_server_facts:
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    tags: instance
+
+  - name: Print info
+    debug:
+      msg: "{{ item.name }}"
+      verbosity: 3
+    with_items: "{{ openstack_servers }}"
+    tags: instance
+
+  - name: Destroy instances
+    os_server:
+      name: "{{ item.name }}"
+      state: absent
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    with_items: "{{ openstack_servers }}"
+    tags: instance
+
+  - name: get volume list
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' volume list -c'Display Name' -fvalue"
+    register: result
+    tags: volume
+
+  - name: Print info
+    debug:
+      var: result.stdout_lines
+    tags: volume
+
+  - name: Destroy volumes
+    os_volume:
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+      display_name: "{{ item }}"
+      state: absent
+    with_items: "{{ result.stdout_lines }}"
+    tags: volume
+
+  - name: Get ports to Destroy
+    os_port_facts:
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    tags: port
+
+  - name: print PortsToDestroy
+    debug:
+      var: openstack_ports
+      verbosity: 3
+    tags: port
+
+  - name: Destroy classic ports
+    os_port:
+      network: "{{ item.network_id }}"
+      name: "{{ item.name }}"
+      mac_address: "{{ item.mac_address }}"
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+      state: absent
+    with_items: "{{ openstack_ports }}"
+    when: "'{{ item.device_owner }}' != 'network:router_interface_distributed' and '{{ item.device_owner }}' != 'network:router_interface'"
+    tags: port
+
+  - name: Destroy the specific "network:router_interface_distributed"
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' router remove port '{{ item.device_id }}' '{{ item.id }}'"
+    when: "'{{ item.device_owner }}' == 'network:router_interface_distributed'"
+    with_items: "{{ openstack_ports }}"
+    tags: port
+
+  - name: Destroy the specific "network:router_interface" [for some old openstack clouds]
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' router remove port '{{ item.device_id }}' '{{ item.id }}'"
+    when: "'{{ item.device_owner }}' == 'network:router_interface'"
+    with_items: "{{ openstack_ports }}"
+    tags: port
+
+  - name: Get routers id
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' router list -cName -fvalue"
+    register: result
+    tags: router
+
+  - name: Print result
+    debug:
+      var: result.stdout_lines
+      verbosity: 3
+    tags: router
+
+  - name: Delete router
+    os_router:
+      name: "{{ item }}"
+      state: absent
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    with_items: "{{ result.stdout_lines }}"
+    tags: router
+
+  - name: Get network informations
+    os_networks_facts:
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    tags: network
+
+  - name: Print network info
+    debug:
+      msg: "{{ item.name }}"
+      verbosity: 3
+    with_items: "{{ openstack_networks }}"
+    tags: network
+
+  - name: delete network
+    os_network:
+      name: "{{ item.name }}"
+      state: absent
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    when: "'{{ item.name }}' != '{{ CloudExternalNetworkName }}'"
+    with_items: "{{ openstack_networks }}"
+    ignore_errors: yes
+    tags: network
+
+
+  - name: Get security group list
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' security group list -cName -fvalue"
+    register: result
+    tags: security
+
+  - name: Print result
+    debug:
+      var: result.stdout_lines
+      verbosity: 3
+    tags: security
+
+  - name: Delete security groups
+    os_security_group:
+      name: "{{ item }}"
+      state: absent
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    when: "'{{ item }}' != 'default'"
+    with_items: "{{ result.stdout_lines }}"
+    tags: security
+
+  - name: Get keypair list
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' keypair list -cName -fvalue"
+    register: result
+    tags: key
+
+  - name: Print result
+    debug:
+      var: result.stdout_lines
+      verbosity: 3
+    tags: key
+
+  - name: Delete key pair
+    os_keypair:
+      name: "{{ item }}"
+      state: absent
+      timeout: 180
+      validate_certs: false
+      cloud: multicloud
+    with_items: "{{ result.stdout_lines }}"
+    tags: key
+
+  - name: Get floating ip list
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' floating ip list -c'Floating IP Address' -fvalue"
+    register: result
+    tags: floatingIP
+
+  - name: Print result
+    debug:
+      var: result.stdout_lines
+      verbosity: 3
+    tags: floatingIP
+
+  - name: Delete floating ip
+    shell: "openstack --insecure --os-auth-url '{{ CloudAuthUrl }}' --os-username '{{ CloudUserName }}' --os-password '{{ CloudPassword }}' --os-tenant-name '{{ CloudProjectName }}' --os-project-name '{{ CloudProjectName }}' --os-default-domain-id '{{ CloudNeutronDomainId }}' --os-region '{{ CloudRegionName }}' floating ip delete '{{ item }}'"
+    with_items: "{{ result.stdout_lines }}"
+    tags: floatingIP
